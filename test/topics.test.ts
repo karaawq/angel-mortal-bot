@@ -23,9 +23,7 @@ assert.equal(threadIdFor(noTabs, "angel"), null);
 assert.equal(roleForThread(noTabs, undefined), null);
 assert.equal(roleForThread(noTabs, 11), null);
 
-assert.equal(mortalInfoText("cats", "durian"), "💚 Likes: cats\n🚫 Dislikes: durian");
-assert.equal(mortalInfoText("cats", null), "💚 Likes: cats");
-assert.equal(mortalInfoText(null, "durian"), "🚫 Dislikes: durian");
-assert.equal(mortalInfoText(null, null), "");
+assert.equal(mortalInfoText("cats; no durian"), "📝 Preferences: cats; no durian");
+assert.equal(mortalInfoText(null), "");
 
 console.log("topics tests passed");

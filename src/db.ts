@@ -48,8 +48,8 @@ export interface QueuedBroadcast {
 }
 
 export interface MortalInfo {
-  likes: string | null;
-  dislikes: string | null;
+  room_number: string | null;
+  preferences: string | null;
 }
 
 /** What an angel currently has: their mortal and the mortal's info, plus where to reach the angel. */
@@ -123,13 +123,13 @@ export class Db {
 
   // ---- reply routing ----
 
-  /** The likes/dislikes of `angelHandle`'s mortal, as given in the last upload. */
+  /** The preferences of `angelHandle`'s mortal, as given in the last upload. */
   async mortalInfo(angelHandle: string): Promise<MortalInfo> {
     const row = await this.d1
-      .prepare("SELECT mortal_likes AS likes, mortal_dislikes AS dislikes FROM pairings WHERE angel_handle = ?")
+      .prepare("SELECT mortal_room_number AS room_number, mortal_preferences AS preferences FROM pairings WHERE angel_handle = ?")
       .bind(angelHandle)
       .first<MortalInfo>();
-    return row ?? { likes: null, dislikes: null };
+    return row ?? { room_number: null, preferences: null };
   }
 
   async saveMap(recipientChatId: number, recipientMsgIds: number[], row: MsgMapRow) {
@@ -176,8 +176,8 @@ export class Db {
     const stmts: D1PreparedStatement[] = [
       this.d1.prepare("DELETE FROM pairings_backup"),
       this.d1.prepare(
-        `INSERT INTO pairings_backup (angel_handle, mortal_handle, mortal_likes, mortal_dislikes)
-         SELECT angel_handle, mortal_handle, mortal_likes, mortal_dislikes FROM pairings`,
+        `INSERT INTO pairings_backup (angel_handle, mortal_handle, mortal_room_number, mortal_preferences)
+         SELECT angel_handle, mortal_handle, mortal_room_number, mortal_preferences FROM pairings`,
       ),
       this.d1.prepare("DELETE FROM pairings"),
     ];
@@ -186,7 +186,7 @@ export class Db {
       const placeholders = chunk.map(() => "(?, ?, ?, ?)").join(", ");
       stmts.push(
         this.d1
-          .prepare(`INSERT INTO pairings (angel_handle, mortal_handle, mortal_likes, mortal_dislikes) VALUES ${placeholders}`)
+          .prepare(`INSERT INTO pairings (angel_handle, mortal_handle, mortal_room_number, mortal_preferences) VALUES ${placeholders}`)
           .bind(...chunk.flat()),
       );
     }
@@ -204,16 +204,16 @@ export class Db {
   /** The pairings as they were before the last /upload or /undoupload. */
   async backupPairs(): Promise<Pair[]> {
     const { results } = await this.d1
-      .prepare("SELECT angel_handle, mortal_handle, mortal_likes, mortal_dislikes FROM pairings_backup ORDER BY angel_handle")
-      .all<{ angel_handle: string; mortal_handle: string; mortal_likes: string | null; mortal_dislikes: string | null }>();
-    return results.map((r) => [r.angel_handle, r.mortal_handle, r.mortal_likes, r.mortal_dislikes]);
+      .prepare("SELECT angel_handle, mortal_handle, mortal_room_number, mortal_preferences FROM pairings_backup ORDER BY angel_handle")
+      .all<{ angel_handle: string; mortal_handle: string; mortal_room_number: string | null; mortal_preferences: string | null }>();
+    return results.map((r) => [r.angel_handle, r.mortal_handle, r.mortal_room_number, r.mortal_preferences]);
   }
 
   /** Every angel's current mortal and mortal info, so a new upload can tell who needs an update. */
   async angelSnapshot(): Promise<Map<string, AngelSnapshot>> {
     const { results } = await this.d1
       .prepare(
-        `SELECT x.angel_handle, x.mortal_handle, x.mortal_likes AS likes, x.mortal_dislikes AS dislikes,
+        `SELECT x.angel_handle, x.mortal_handle, x.mortal_room_number AS room_number, x.mortal_preferences AS preferences,
                 a.chat_id, a.mortal_thread_id
          FROM pairings x JOIN participants a ON a.handle = x.angel_handle`,
       )

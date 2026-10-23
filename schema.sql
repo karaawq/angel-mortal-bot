@@ -10,20 +10,20 @@ CREATE TABLE IF NOT EXISTS participants (
   mortal_tab_name  TEXT                       -- renamed when the pairings change
 );
 
--- angel_handle welfares mortal_handle. Likes/dislikes are the mortal's, shown only to their angel.
+-- angel_handle welfares mortal_handle. Preferences are the mortal's, shown only to their angel.
 CREATE TABLE IF NOT EXISTS pairings (
   angel_handle    TEXT PRIMARY KEY,
   mortal_handle   TEXT NOT NULL UNIQUE,
-  mortal_likes    TEXT,
-  mortal_dislikes TEXT
+  mortal_room_number TEXT,
+  mortal_preferences TEXT
 );
 
 -- The pairings before the last /upload, so /undoupload can restore them.
 CREATE TABLE IF NOT EXISTS pairings_backup (
   angel_handle    TEXT PRIMARY KEY,
   mortal_handle   TEXT NOT NULL UNIQUE,
-  mortal_likes    TEXT,
-  mortal_dislikes TEXT
+  mortal_room_number TEXT,
+  mortal_preferences TEXT
 );
 
 -- Every relayed message, so a Telegram "Reply" routes back to the right person.

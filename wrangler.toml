@@ -14,8 +14,8 @@ preview_urls = false
 crons = ["* * * * *"]
 
 [vars]
-# Shown at the top of the bot's help message, e.g. "👼 E Block Angel & Mortal bot".
-EVENT_NAME = "E Block Angel & Mortal"
+# Shown at the top of the bot's help message, e.g. "👼 D Block Angel & Mortal bot".
+EVENT_NAME = "D Block Angel & Mortal"
 
 # Admins are NOT configured here. ADMIN_IDS (comma-separated Telegram user IDs) is a secret:
 #   npx wrangler secret put ADMIN_IDS
@@ -25,4 +25,4 @@ EVENT_NAME = "E Block Angel & Mortal"
 binding = "DB"
 database_name = "angel-mortal"
 # Replace with the id printed by `npx wrangler d1 create angel-mortal`.
-database_id = "f622c6d8-cc6e-40be-a8e9-0bd5f37e8834"
+database_id = "5560166b-89ac-4106-b31a-e322e5dea537"

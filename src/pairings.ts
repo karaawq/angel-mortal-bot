@@ -1,5 +1,5 @@
-/** One pairing, plus what the mortal likes and dislikes (null when not given). */
-export type Pair = [angel: string, mortal: string, likes: string | null, dislikes: string | null];
+/** One pairing, plus the mortal's preferences (null when not given). */
+export type Pair = [angel: string, mortal: string, roomNumber: string | null, preferences: string | null];
 
 export interface ParseResult {
   pairs: Pair[];
@@ -9,7 +9,7 @@ export interface ParseResult {
 
 const USERNAME = /^[a-z0-9_]{4,32}$/;
 
-/** Cells that mean "nothing", so the angel doesn't see "Dislikes: nil". */
+/** Cells that mean "nothing", so the angel doesn't see an empty preference. */
 const PLACEHOLDER = /^(nil|none|nothing|null|na|n\/a|-+|–|—)$/i;
 
 /** Long enough for a few sentences, short enough that the welcome stays under Telegram's limit. */
@@ -65,14 +65,14 @@ function detectDelimiter(text: string): string {
   return ",";
 }
 
-/** A likes/dislikes cell, or null if it's empty or a placeholder like "nil". */
+/** A preferences cell, or null if it's empty or a placeholder like "nil". */
 function infoCell(raw: string | undefined): string | null {
   const value = (raw ?? "").replace(/\r\n?/g, "\n").trim();
   return value && !PLACEHOLDER.test(value) ? value : null;
 }
 
 /**
- * Parses "angel,mortal[,likes,dislikes]" rows: a CSV file (comma or semicolon), rows pasted from a
+ * Parses "angel,mortal[,room_number,preferences]" rows: a CSV file (comma or semicolon), rows pasted from a
  * spreadsheet (tab), or the older one-pair-per-line text (comma, tab, semicolon or space).
  * Errors block the upload; warnings are reported but allowed.
  */
@@ -105,21 +105,19 @@ export function parsePairings(text: string): ParseResult {
       return;
     }
     if (cells.length > 4) {
-      errors.push(`${row}: expected 4 columns (angel, mortal, likes, dislikes) but found ${cells.length}`);
+      errors.push(`${row}: expected 4 columns (angel, mortal, room_number, preferences) but found ${cells.length}`);
       return;
     }
     for (const h of [angel, mortal]) {
       if (!isValidHandle(h)) errors.push(`${row}: "@${h}" is not a valid Telegram username`);
     }
     if (angel === mortal) errors.push(`${row}: @${angel} is paired with themselves`);
-    const likes = infoCell(cells[2]);
-    const dislikes = infoCell(cells[3]);
-    for (const [name, value] of [["likes", likes], ["dislikes", dislikes]] as const) {
-      if (value && value.length > MAX_INFO_LENGTH) {
-        errors.push(`${row}: @${mortal}'s ${name} are ${value.length} characters long (max ${MAX_INFO_LENGTH})`);
-      }
+    const roomNumber = infoCell(cells[2]);
+    const preferences = infoCell(cells[3]);
+    if (preferences && preferences.length > MAX_INFO_LENGTH) {
+      errors.push(`${row}: @${mortal}'s preferences are ${preferences.length} characters long (max ${MAX_INFO_LENGTH})`);
     }
-    pairs.push([angel, mortal, likes, dislikes]);
+    pairs.push([angel, mortal, roomNumber, preferences]);
   });
 
   if (pairs.length === 0 && errors.length === 0) errors.push("No pairings found.");

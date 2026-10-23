@@ -5,8 +5,8 @@ import type { Participant, Role } from "./db";
  * the header shown while chatting, so it spells out who's who; the Mortal tab names its person.
  */
 export function tabName(role: Role, mortalHandle: string | null): string {
-  if (role === "angel") return "😇 Angel: secret (cares for you)";
-  return mortalHandle ? `🙂 Mortal: @${mortalHandle} (you care for them)` : "🙂 Mortal: none assigned";
+  if (role === "angel") return "😇 Angel";
+  return mortalHandle ? `🙂 Mortal: @${mortalHandle}` : "🙂 Mortal: none assigned";
 }
 
 /**
@@ -18,11 +18,11 @@ export function messageLabel(senderRole: Role, senderHandle: string): string {
   return senderRole === "angel" ? "😇 Angel" : `🙂 Mortal (@${senderHandle})`;
 }
 
-/** The mortal's likes/dislikes as shown to their angel, one line each, or "" if neither was given. */
-export function mortalInfoText(likes: string | null, dislikes: string | null): string {
+/** The mortal's preferences as shown to their angel, or "" if none were given. */
+export function mortalInfoText(roomNumber: string | null, preferences: string | null): string {
   const lines: string[] = [];
-  if (likes) lines.push(`💚 Likes: ${likes}`);
-  if (dislikes) lines.push(`🚫 Dislikes: ${dislikes}`);
+  if (roomNumber) lines.push(`🚪 Their room number: ${roomNumber}`);
+  if (preferences) lines.push(`📝 Preferences: ${preferences}`);
   return lines.join("\n");
 }
 

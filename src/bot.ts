@@ -14,27 +14,20 @@ export interface Env {
   DB: D1Database;
 }
 
-const helpText = (eventName: string) => `👼 ${eventName} bot
+const helpText = (eventName: string) => `Use the tabs at the top to chat with your angel or mortal:
+${TAB_LABEL.angel}: your secret angel, who takes care of you
+${TAB_LABEL.mortal}: your mortal, who you take care of
 
-👆 Chat inside the tabs at the top of this chat:
-${TAB_LABEL.angel}: your secret Angel, who takes care of YOU
-${TAB_LABEL.mortal}: your Mortal, who YOU take care of
+important notes:
+• messages typed outside the tabs are NOT sent, make sure to type inside the correct thread
+• edits and deletes don't reach the other person! once a message is sent, it's sent
 
-Messages typed outside the tabs are NOT sent.
-
-Tips
-• Text, photos, stickers, voice notes, videos and files all work.
-• Use Reply on a message to answer that one.
-• No warning means it was delivered. If something fails, I'll reply to it with ⚠️.
-• Edits and deletes don't reach the other person.
-• Angels: your name is hidden, but your voice in voice notes isn't 😉
-• Can't see the tabs? Update Telegram and use the phone app.
-
-/whoismymortal · /help`;
+Have fun!
+`;
 
 const ADMIN_HELP = `🛠 Admin commands
 
-/upload: replace all pairings. Send a .csv with /upload as the caption, columns: angel, mortal, likes, dislikes (likes/dislikes optional; save from Excel as "CSV UTF-8"). Or paste "angel,mortal" lines after the command
+  /upload: replace all pairings. Send a .csv with /upload as the caption, columns: angel, mortal, preferences (optional; save from Excel as "CSV UTF-8"). Or paste "angel,mortal" lines after the command
 /pairs: list every pairing and who hasn't joined
 /status: join and message counts
 /missing: handles that haven't started the bot
@@ -291,8 +284,8 @@ export function createBot(env: Env): Bot {
     let me = await requireParticipant(ctx);
     if (!me) return;
     const mortal = await db.partner(me.handle, "mortal");
-    const { likes, dislikes } = await db.mortalInfo(me.handle);
-    const info = mortalInfoText(likes, dislikes);
+    const { room_number, preferences } = await db.mortalInfo(me.handle);
+    const info = mortalInfoText(room_number, preferences);
     try {
       me = await ensureTabs(ctx.api, db, me);
     } catch (err) {
@@ -305,9 +298,9 @@ export function createBot(env: Env): Bot {
     }
 
     const intro: Record<Role, string> = {
-      angel: "😇 Chat with your secret Angel here.",
+      angel: "😇 Chat with your secret angel here.",
       mortal: mortal
-        ? `🙂 Chat with your Mortal, @${mortal.handle}, here. They don't know it's you.` + (info ? `\n\n${info}` : "")
+        ? `🙂 Chat with your mortal, @${mortal.handle}, here. They don't know it's you.` + (info ? `\n\n${info}` : "")
         : "You don't have a mortal assigned yet.",
     };
     for (const role of ROLES) {
@@ -315,13 +308,14 @@ export function createBot(env: Env): Bot {
     }
 
     await ctx.reply(
-      `Welcome, @${me.handle}! 🎉` +
-        (mortal ? ` Your Mortal is @${mortal.handle}. Take good care of them!` : "") +
-        (mortal && info ? `\n\n${info}` : "") +
-        `\n\n${HELP}`,
-      // Clears the old mode-switching keyboard for anyone who used an earlier version of the bot.
+      `Welcome to A&M! 🎉` +
+        (mortal ? ` Your mortal is @${mortal.handle}. Take good care of them :)` : "") +
+        (mortal && info ? `\n\n${info}` : ""),
+      // Clears the old mode-switching keyboard.
       { reply_markup: { remove_keyboard: true } },
     );
+
+    await ctx.reply(HELP);
   });
 
   pm.command("help", (ctx) => ctx.reply(HELP));
@@ -335,9 +329,9 @@ export function createBot(env: Env): Bot {
       await ctx.reply("You don't have a mortal assigned.");
       return;
     }
-    const { likes, dislikes } = await db.mortalInfo(me.handle);
-    const info = mortalInfoText(likes, dislikes);
-    await ctx.reply(`Your Mortal is @${mortal.handle} 🙂` + (info ? `\n\n${info}` : ""));
+    const { room_number, preferences } = await db.mortalInfo(me.handle);
+    const info = mortalInfoText(room_number, preferences);
+    await ctx.reply(`Your mortal is @${mortal.handle} 🙂` + (info ? `\n\n${info}` : ""));
   });
 
   // ---- admin commands (non-admins fall through to "Unknown command") ----
@@ -360,7 +354,7 @@ export function createBot(env: Env): Bot {
 
   /**
    * Replaces the pairings, then tells every angel who has already joined if their mortal's
-   * likes/dislikes are new or changed (a new mortal counts as changed), in their Mortal tab.
+   * preferences are new or changed (a new mortal counts as changed), in their Mortal tab.
    */
   async function savePairings(ctx: Context, pairs: Pair[]) {
     const before = await db.angelSnapshot();
@@ -368,14 +362,14 @@ export function createBot(env: Env): Bot {
     const after = await db.angelSnapshot();
     const notes = [];
     for (const now of after.values()) {
-      const info = mortalInfoText(now.likes, now.dislikes);
+      const info = mortalInfoText(now.room_number, now.preferences);
       const was = before.get(now.angel_handle);
-      const changed = !was || was.mortal_handle !== now.mortal_handle || was.likes !== now.likes || was.dislikes !== now.dislikes;
+      const changed = !was || was.mortal_handle !== now.mortal_handle || was.room_number !== now.room_number || was.preferences !== now.preferences;
       if (info && changed && now.chat_id !== null) {
         notes.push({
           chat_id: now.chat_id,
           thread_id: now.mortal_thread_id,
-          text: `📝 Updated info about your Mortal, @${now.mortal_handle}:\n\n${info}`,
+          text: `📝 Updated info about your mortal, @${now.mortal_handle}:\n\n${info}`,
         });
       }
     }
@@ -387,8 +381,8 @@ export function createBot(env: Env): Bot {
   async function handleUpload(ctx: Context, text: string) {
     if (!text.trim()) {
       await ctx.reply(
-        "Send a .csv file with /upload as its caption. Columns: angel handle, mortal handle, mortal's likes, mortal's dislikes " +
-          '(likes and dislikes are optional; "nil" or "-" counts as empty). In Excel, use File → Save As → "CSV UTF-8" so emoji survive.\n\n' +
+        "Send a .csv file with /upload as its caption. Columns: angel handle, mortal handle, mortal's room number, mortal's preferences " +
+          '(room number and preferences are optional; "nil" or "-" counts as empty). In Excel, use File → Save As → "CSV UTF-8" so emoji survive.\n\n' +
           "Or send /upload followed by one pairing per line:\n\n/upload\nangel_handle,mortal_handle\nangel_handle,mortal_handle",
       );
       return;
@@ -400,9 +394,9 @@ export function createBot(env: Env): Bot {
       return;
     }
     const { total, joined, notified } = await savePairings(ctx, pairs);
-    const withInfo = pairs.filter(([, , likes, dislikes]) => likes || dislikes).length;
+    const withInfo = pairs.filter(([, , , preferences]) => preferences).length;
     let reply = `✅ Saved ${pairs.length} pairings (${total} participants, ${joined} already joined).`;
-    reply += `\n💚 ${withInfo} of ${pairs.length} mortals have likes/dislikes.`;
+    reply += `\n📝 ${withInfo} of ${pairs.length} mortals have preferences.`;
     if (notified) reply += `\n📝 Telling ${notified} angels who already joined about their mortal's new info.`;
     if (warnings.length) reply += `\n\n⚠️ Warnings:\n${clip(warnings)}`;
     reply += "\n\nMistake? /undoupload restores the previous pairings.";

@@ -4,8 +4,8 @@ import { parseAdminIds } from "./config";
 import { Db } from "./db";
 
 const USER_COMMANDS = [
-  { command: "start", description: "Join, see your Mortal and get your two tabs" },
-  { command: "whoismymortal", description: "Remind me who my Mortal is" },
+  { command: "start", description: "Join, see your mortal and get your two tabs" },
+  { command: "whoismymortal", description: "Remind me who my mortal is" },
   { command: "help", description: "How this bot works" },
 ];
 
