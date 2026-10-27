@@ -221,6 +221,12 @@ export async function drainBroadcastQueue(api: Api, db: Db, limit: number) {
 
 export function createBot(env: Env): Bot {
   const bot = new Bot(env.BOT_TOKEN);
+
+  bot.use(async (ctx, next) => {
+    if (ctx.from?.is_bot) return;
+    await next();
+  });
+
   const db = new Db(env.DB);
   const admins = new Set(parseAdminIds(env.ADMIN_IDS).ids);
   const isAdmin = (ctx: Context) => !!ctx.from && admins.has(ctx.from.id);
@@ -300,7 +306,7 @@ export function createBot(env: Env): Bot {
     const intro: Record<Role, string> = {
       angel: "😇 Chat with your secret angel here.",
       mortal: mortal
-        ? `🙂 Chat with your mortal, @${mortal.handle}, here. They don't know it's you.` + (info ? `\n\n${info}` : "")
+        ? `🙂 Chat with your mortal, @${mortal.handle}, here. They don't know it's you.` 
         : "You don't have a mortal assigned yet.",
     };
     for (const role of ROLES) {
